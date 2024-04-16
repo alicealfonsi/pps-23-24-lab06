@@ -44,14 +44,41 @@ enum List[A]:
     case Nil() => throw new IllegalStateException()
     case h :: t => t.foldLeft(h)(op)
 
-  // Exercise: implement the following methods
-  def zipWithValue[B](value: B): List[(A, B)] = ???
-  def length(): Int = ???
-  def zipWithIndex: List[(A, Int)] = ???
-  def partition(predicate: A => Boolean): (List[A], List[A]) = ???
-  def span(predicate: A => Boolean): (List[A], List[A]) = ???
-  def takeRight(n: Int): List[A] = ???
-  def collect(predicate: PartialFunction[A, A]): List[A] = ???
+  // ex 1.1
+  def zipWithValue[B](value: B): List[(A, B)] = this match
+    case h :: t => (h, value) :: t.zipWithValue(value)
+    case Nil() => Nil()
+  def zipWithValueWithFoldRight[B](value: B): List[(A, B)] = foldRight(Nil())((elem, acc) => (elem, value) :: acc)
+  def zipWithValueWithMap[B](value: B): List[(A, B)] = this.map(elem => (elem, value))
+
+  // ex 1.2
+  def length(): Int = foldLeft(0)((acc, elem) => acc + 1)
+
+  // ex 1.3
+  def zipWithIndexWithFoldRight: List[(A, Int)] =
+    foldRight(Nil())((elem, acc) => (elem, this.length() - acc.length() - 1) :: acc)
+  def zipWithIndex: List[(A, Int)] = this match
+    case h :: t => (h, 0) :: t.zipWithIndex.map((elem, i) => (elem, i + 1))
+    case Nil() => Nil()
+
+  // ex 1.4
+  def partition(predicate: A => Boolean): (List[A], List[A]) = foldRight(Nil(), Nil())((elem, acc) =>
+    if predicate(elem) then (elem :: acc._1, acc._2) else (acc._1, elem :: acc._2))
+
+  // ex 1.5
+  def span(predicate: A => Boolean): (List[A], List[A]) = this match
+    case h :: t if predicate(h) =>
+      val (acc1, acc2) = t.span(predicate)
+      (h :: acc1, acc2)
+    case _ => (Nil(), this)
+
+  // ex 1.6
+  def takeRight(n: Int): List[A] = foldRight(Nil())((elem, acc) => if acc.length() < n then elem :: acc else acc)
+
+  // ex 1.7
+  def collect(predicate: PartialFunction[A, A]): List[A] = foldRight(Nil())((elem, acc) =>
+    if predicate.isDefinedAt(elem) then predicate(elem) :: acc else acc)
+
 // Factories
 object List:
 
@@ -68,10 +95,16 @@ object Test extends App:
   import List.*
   val reference = List(1, 2, 3, 4)
   println(reference.zipWithValue(10)) // List((1, 10), (2, 10), (3, 10), (4, 10))
+  println(reference.zipWithValueWithFoldRight(10)) // List((1, 10), (2, 10), (3, 10), (4, 10))
+  println(reference.zipWithValueWithMap(10)) // List((1, 10), (2, 10), (3, 10), (4, 10))
+  println(reference.length()) // 4
+  println(reference.zipWithIndexWithFoldRight) // List((1, 0), (2, 1), (3, 2), (4, 3))
   println(reference.zipWithIndex) // List((1, 0), (2, 1), (3, 2), (4, 3))
   println(reference.partition(_ % 2 == 0)) // (List(2, 4), List(1, 3))
   println(reference.span(_ % 2 != 0)) // (List(1), List(2, 3, 4))
+  println(reference.span(_ % 2 == 0)) // (Nil(), List(1, 2, 3, 4))
   println(reference.span(_ < 3)) // (List(1, 2), List(3, 4))
+  println(reference.span(_ == 2)) // (Nil(), List(1, 2, 3, 4))
   println(reference.reduce(_ + _)) // 10
   println(List(10).reduce(_ + _)) // 10
   println(reference.takeRight(3)) // List(2, 3, 4)
